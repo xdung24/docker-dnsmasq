@@ -1,5 +1,4 @@
 FROM alpine:latest
-LABEL maintainer="dev@jpillora.com"
 # webproc release settings
 ENV WEBPROC_VERSION 0.4.0
 ARG BUILDARCH
@@ -12,8 +11,11 @@ RUN apk update \
 	&& chmod +x /usr/local/bin/webproc \
 	&& apk del .build-deps
 #configure dnsmasq
-RUN mkdir -p /etc/default/
-RUN echo -e "ENABLED=1\nIGNORE_RESOLVCONF=yes" > /etc/default/dnsmasq
-COPY dnsmasq.conf /etc/dnsmasq.conf
+RUN echo $'# Use CloudFlare NS Servers\n\
+server=1.0.0.1\n\
+server=1.1.1.1\n# Serve all .company queries using a specific nameserver\n\
+server=/company/10.0.0.1\n# Define Hosts DNS Records\n\
+address=/myhost.company/10.0.0.2\n' > /etc/dnsmasq.conf
+
 # https://thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html
-ENTRYPOINT ["webproc","--configuration-file","/etc/dnsmasq.conf","--","dnsmasq","--keep-in-foreground"]
+ENTRYPOINT ["webproc", "-c", "/etc/dnsmasq.conf", "-c", "/etc/hosts", "--", "dnsmasq", "--no-daemon", "--log-queries", "--no-resolv", "--strict-order"]
